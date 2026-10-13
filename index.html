@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>职工养老金测算</title>
+  <style>
+    :root {
+      --bg: #e5ddd0;
+      --sheet: #f7f4ee;
+      --ink: #1b1915;
+      --muted: #655e54;
+      --line: #ddd4c6;
+      --green: #1b5e45;
+      --green-deep: #143f30;
+      --cinnabar: #8d342c;
+      --gold: #8d6b32;
+      --card-line: #d5cdc0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font: 16px/1.55 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    button, input, select { font: inherit; color: inherit; }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 64px;
+    }
+
+    header { margin-bottom: 22px; }
+
+    .doc-kicker {
+      margin: 0 0 6px;
+      color: var(--green);
+      font-size: 13px;
+      letter-spacing: 0.12em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 40px;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .lede {
+      max-width: 46em;
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+
+    .messages { display: grid; gap: 8px; margin: 0 0 14px; }
+    .messages:empty { display: none; }
+    .messages p { margin: 0; padding: 10px 12px; background: #f8e8e4; color: #6d241e; }
+    .messages p.warn { background: #f8f1df; color: #6a4e16; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--sheet);
+      border: 1px solid var(--card-line);
+      box-shadow: 0 16px 40px rgba(70, 48, 12, 0.05);
+    }
+
+    .form-card { padding: 8px 22px 22px; border-top: 4px solid var(--green); }
+
+    h2 {
+      margin: 22px 0 12px;
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--green-deep);
+    }
+
+    h2 span {
+      display: inline-block;
+      width: 14px;
+      height: 2px;
+      margin-right: 8px;
+      background: var(--green);
+      vertical-align: middle;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 16px;
+    }
+
+    .span2 { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    input, select {
+      width: 100%;
+      height: 42px;
+      padding: 0 12px;
+      border: 1px solid #cfc6b8;
+      border-radius: 2px;
+      background: #fff;
+    }
+
+    input:focus, select:focus, button:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: 1px;
+      border-color: var(--green);
+    }
+
+    input[readonly] { background: #f1ece4; color: var(--muted); }
+
+    .hint { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    #extra:empty { display: none; }
+
+    .ym, .index-row, .choices, .actions { display: flex; align-items: center; gap: 8px; }
+    .ym input { width: 76px; text-align: right; }
+    .ym span, .index-row span { color: var(--muted); font-size: 13px; }
+    .index-row input[type="range"] {
+      height: 42px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      accent-color: var(--green);
+    }
+    .index-row input[type="number"] { width: 96px; flex: none; }
+
+    .check { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--ink); font-size: 14px; }
+    .check input { width: 16px; height: 16px; }
+
+    button {
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid #cfc6b8;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--green); }
+
+    button[aria-pressed="true"] {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+
+    .actions { flex-wrap: wrap; margin-top: 16px; }
+
+    .result { position: sticky; top: 16px; overflow: hidden; }
+
+    .result-head { padding: 22px; background: var(--green-deep); color: #f3f7f4; }
+    .eyebrow {
+      margin: 14px 0 0;
+      color: #c9ddd4;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+    .amount {
+      margin: 6px 0 0;
+      font-family: Bahnschrift, "Segoe UI", sans-serif;
+      font-size: clamp(36px, 5vw, 52px);
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .amount small {
+      margin-left: 6px;
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+    .annual { margin: 8px 0 0; color: #d5e6de; }
+
+    .status {
+      display: inline-block;
+      max-width: 100%;
+      margin: 0;
+      padding: 4px 8px;
+      background: rgba(255, 255, 255, 0.12);
+      font-size: 13px;
+    }
+    .status.warn { background: #f3ddb0; color: #3f2a0c; }
+    .status.stop { background: #f3d0c8; color: #641f18; }
+
+    .result-body { padding: 16px 22px 22px; }
+
+    .bar { display: flex; height: 8px; margin: 4px 0 14px; background: #e7e0d4; }
+    .bar i { display: block; height: 100%; }
+    .swatch, .bar i { flex: none; }
+    .c-basic { background: var(--green); }
+    .c-personal { background: var(--gold); }
+    .c-trans { background: var(--cinnabar); }
+
+    .ledger, .facts { margin: 0; }
+    .ledger div, .facts div {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--line);
+    }
+    .ledger dt, .facts dt { flex: none; color: var(--muted); white-space: nowrap; }
+    .ledger dd, .facts dd {
+      margin: 0 0 0 12px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .swatch {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 6px;
+    }
+
+    .countdown { margin: 0 0 18px; padding: 18px 22px 10px; }
+    .countdown h2 { margin-top: 0; }
+    .count-kicker { margin: 0; color: var(--muted); font-size: 13px; }
+    .count-units { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 8px; }
+    .count-units div {
+      min-width: 104px;
+      padding: 14px 16px 12px;
+      background: var(--green-deep);
+      color: #f4f7f4;
+    }
+    .count-units strong {
+      display: block;
+      font-family: Bahnschrift, "Segoe UI", sans-serif;
+      font-size: clamp(36px, 5vw, 52px);
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .count-units span { display: block; margin-top: 6px; color: #c9ddd4; font-size: 13px; }
+    .count-main {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+    .count-sub { margin: 6px 0 12px; color: var(--muted); }
+    .timeline { position: relative; list-style: none; margin: 0; padding: 0 0 6px; }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 16px;
+      bottom: 16px;
+      width: 1px;
+      background: var(--line);
+    }
+    .timeline li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 4px 16px;
+      padding: 7px 0 7px 22px;
+      position: relative;
+    }
+    .timeline .dot {
+      position: absolute;
+      left: 4px;
+      top: 14px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #cfc6b8;
+    }
+    .timeline li.now .dot { background: var(--ink); }
+    .timeline li.target .dot { background: var(--green); box-shadow: 0 0 0 3px #e5f0ea; }
+    .timeline li.past { color: var(--muted); }
+    .timeline li.target .name { color: var(--green-deep); font-weight: 650; }
+    .timeline .when { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    .compare { margin-top: 18px; padding: 22px; }
+    .compare h2 { margin-top: 0; }
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .compare-card {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 14px 14px 12px;
+    }
+    .compare-card.current { box-shadow: inset 0 3px 0 var(--green); }
+    .compare-card .label { margin: 0; color: var(--muted); font-size: 13px; }
+    .compare-card .when { margin: 6px 0 0; font-size: 14px; }
+    .compare-card .figure {
+      margin: 8px 0 0;
+      font-family: Bahnschrift, "Segoe UI", sans-serif;
+      font-size: clamp(28px, 3vw, 36px);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: var(--green-deep);
+    }
+    .compare-card .unit { margin: 0; color: var(--muted); font-size: 12px; }
+    .compare-card .delta { margin: 8px 0 0; font-size: 13px; color: var(--ink); }
+    .compare-card dl { margin: 10px 0 0; }
+    .compare-card dl div { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: 13px; }
+    .compare-card dt { color: var(--muted); }
+    .compare-card dd { margin: 0; font-variant-numeric: tabular-nums; }
+    .compare-card .hint { min-height: 1.2em; }
+    .compare-card button { margin-top: 8px; }
+
+    .formula { margin-top: 18px; padding: 22px; }
+    .formula h2 { margin-top: 0; }
+    .eq { margin: 0 0 8px; }
+    .note { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+    .note p { margin: 0 0 8px; }
+
+    details { margin-top: 8px; }
+    summary { cursor: pointer; color: var(--green-deep); }
+    .est { margin-top: 12px; }
+
+    footer { margin-top: 18px; color: var(--muted); font-size: 12px; }
+    a { color: var(--green-deep); }
+
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .result { position: static; order: -1; }
+      .compare-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 32px; }
+    }
+
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .span2 { grid-column: auto; }
+      .wrap { width: min(100% - 20px, 1120px); }
+      .timeline .when { flex-basis: 100%; padding-left: 0; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .result { position: static; }
+      .card { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="doc-kicker">职工基本养老保险</p>
+      <h1>养老金测算</h1>
+      <p class="lede">月基本养老金按基础养老金、个人账户养老金、过渡性养老金估算。退休年龄按 2025 年 1 月 1 日起的渐进式延迟规则。计算在这台浏览器里完成，不会上传。</p>
+    </header>
+
+    <div id="messages" class="messages"></div>
+
+    <section class="card countdown" id="countdown" aria-live="polite">
+      <h2><span></span>退休倒计时</h2>
+      <p class="count-kicker" id="countKicker">距所选退休月</p>
+      <div class="count-units">
+        <div><strong id="countYears">—</strong><span>年</span></div>
+        <div><strong id="countMonths">—</strong><span>个月</span></div>
+        <div><strong id="countDays">—</strong><span>天</span></div>
+      </div>
+      <p class="count-main" id="countMain">—</p>
+      <p class="count-sub" id="countSub"></p>
+      <ol class="timeline" id="timeline"></ol>
+      <p class="hint" id="countNote"></p>
+    </section>
+
+    <div class="layout">
+      <form id="form" class="card form-card" autocomplete="off">
+        <h2><span></span>什么时候退休</h2>
+        <div class="grid">
+          <div>
+            <label for="birth">出生年月</label>
+            <input id="birth" type="month" value="1980-06">
+          </div>
+          <div>
+            <label for="category">参保人员</label>
+            <select id="category">
+              <option value="male">男职工，原法定 60 周岁</option>
+              <option value="female55">女职工，原法定 55 周岁</option>
+              <option value="female50">女职工，原法定 50 周岁</option>
+            </select>
+          </div>
+          <div class="span2">
+            <label for="retire">测算用的退休年月</label>
+            <input id="retire" type="month" value="2043-06">
+            <div class="choices no-print" style="margin-top:8px">
+              <button type="button" id="pickStatutory" aria-pressed="true">法定退休</button>
+              <button type="button" id="pickEarly" aria-pressed="false">弹性最早</button>
+              <button type="button" id="pickLate" aria-pressed="false">弹性最晚</button>
+            </div>
+            <p id="retireNote" class="hint"></p>
+            <p class="hint">原 55 周岁一般是女干部、管理或技术岗位，原 50 周岁一般是女工人。以本人参保身份为准。</p>
+          </div>
+        </div>
+
+        <h2><span></span>缴费和账户</h2>
+        <div class="grid">
+          <div class="span2">
+            <label for="base">退休上年度月计发基数（元）</label>
+            <input id="base" type="number" min="0" step="0.01" inputmode="decimal" value="9000">
+            <p class="hint">填参保地公布的养老金计发基数。公布的是全年数额时，先除以 12。</p>
+          </div>
+          <div class="span2">
+            <label for="index">平均缴费工资指数</label>
+            <div class="index-row">
+              <input id="indexRange" type="range" min="0.2" max="3" step="0.01" value="1" aria-label="指数滑杆">
+              <input id="index" type="number" min="0.01" max="5" step="0.01" inputmode="decimal" value="1.00">
+            </div>
+            <p class="hint">0.60 约按下限缴费，1.00 等于当地平均工资，3.00 约按上限缴费。</p>
+          </div>
+          <div>
+            <label for="years">累计缴费年限，含视同</label>
+            <div class="ym">
+              <input id="years" type="number" min="0" step="1" inputmode="numeric" value="30">
+              <span>年</span>
+              <input id="partMonths" type="number" min="0" step="1" inputmode="numeric" value="0" aria-label="累计缴费月数">
+              <span>个月</span>
+            </div>
+          </div>
+          <div>
+            <label for="deemedYears">其中视同缴费年限</label>
+            <div class="ym">
+              <input id="deemedYears" type="number" min="0" step="1" inputmode="numeric" value="0">
+              <span>年</span>
+              <input id="deemedPartMonths" type="number" min="0" step="1" inputmode="numeric" value="0" aria-label="视同缴费月数">
+              <span>个月</span>
+            </div>
+          </div>
+          <div class="span2">
+            <label class="check"><input id="autoYears" type="checkbox">按实际缴费起始年月计算累计年限</label>
+            <input id="start" type="month" style="margin-top:8px" aria-label="实际缴费起始年月">
+            <p id="autoNote" class="hint"></p>
+          </div>
+          <div>
+            <label for="deemedIndex">视同缴费指数</label>
+            <input id="deemedIndex" type="number" min="0.01" step="0.01" inputmode="decimal" value="1.00">
+            <label class="check"><input id="deemedFollow" type="checkbox" checked>与平均缴费工资指数相同</label>
+          </div>
+          <div>
+            <label for="coeff">过渡系数</label>
+            <select id="coeff">
+              <option value="0.01">1.0%（北京的过渡系数）</option>
+              <option value="0.012" selected>1.2%（江苏、广东的过渡系数）</option>
+              <option value="0.013">1.3%</option>
+              <option value="0.014">1.4%</option>
+              <option value="custom">自定义</option>
+            </select>
+            <input id="coeffCustom" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="填 1.2 表示 1.2%" hidden>
+          </div>
+          <div>
+            <label for="account">退休时个人账户储存额（元）</label>
+            <input id="account" type="number" min="0" step="0.01" inputmode="decimal" value="180000">
+            <p class="hint">个人缴费记入账户的比例是 8%，单位缴费不进个人账户。</p>
+          </div>
+          <div>
+            <label for="wage">退休前本人月工资（元，可选）</label>
+            <input id="wage" type="number" min="0" step="0.01" inputmode="decimal" placeholder="用来算替代率">
+          </div>
+        </div>
+        <p class="hint">1.3%、1.4% 只是常见档位。过渡系数对了，计入的年限仍可能和参保地不同。广东还会把个人账户建立前的一段实际缴费年限算进过渡性养老金。</p>
+
+        <details class="no-print">
+          <summary>不知道储存额，按固定基数粗算</summary>
+          <div class="grid est">
+            <div>
+              <label for="estBase">月缴费基数（元）</label>
+              <input id="estBase" type="number" min="0" step="0.01" inputmode="decimal">
+            </div>
+            <div>
+              <label for="estYears">已按这个基数缴费（年）</label>
+              <input id="estYears" type="number" min="0" step="0.01" inputmode="decimal">
+            </div>
+            <div>
+              <label for="estRate">假设年均记账利率（%）</label>
+              <input id="estRate" type="number" min="0" step="0.01" inputmode="decimal" value="3">
+            </div>
+            <div class="actions">
+              <button type="button" id="fillAccount">填入储存额</button>
+            </div>
+          </div>
+          <p id="estResult" class="hint">按每年末记入「月基数 × 8% × 12」，再用固定利率复利。视同缴费不记入个人账户。真实余额以社保记录为准。</p>
+        </details>
+
+        <div class="actions no-print">
+          <button type="button" id="exampleBtn">恢复示例</button>
+        </div>
+      </form>
+
+      <section class="card result">
+        <div class="result-head">
+          <p id="status" class="status" aria-live="polite">测算中</p>
+          <p class="eyebrow" id="amountLabel">月基本养老金</p>
+          <p class="amount"><span id="amount">—</span><small>元</small></p>
+          <p class="annual" id="annual"></p>
+        </div>
+        <div class="result-body">
+          <div class="bar" aria-hidden="true">
+            <i id="barBasic" class="c-basic"></i>
+            <i id="barPersonal" class="c-personal"></i>
+            <i id="barTrans" class="c-trans"></i>
+          </div>
+          <dl class="ledger">
+            <div><dt><i class="swatch c-basic"></i>基础养老金</dt><dd id="outBasic">—</dd></div>
+            <div><dt><i class="swatch c-personal"></i>个人账户养老金</dt><dd id="outPersonal">—</dd></div>
+            <div><dt><i class="swatch c-trans"></i>过渡性养老金</dt><dd id="outTrans">—</dd></div>
+          </dl>
+          <dl class="facts">
+            <div><dt>所选退休</dt><dd id="factRetire">—</dd></div>
+            <div><dt>法定退休</dt><dd id="factStatutory">—</dd></div>
+            <div><dt>弹性区间</dt><dd id="factWindow">—</dd></div>
+            <div><dt>计发月数</dt><dd id="factDivisor">—</dd></div>
+            <div><dt>最低缴费年限</dt><dd id="factMin">—</dd></div>
+            <div><dt>替代率</dt><dd id="factReplace">—</dd></div>
+          </dl>
+          <p id="extra" class="hint"></p>
+          <div class="actions no-print">
+            <button type="button" id="copyBtn">复制结果</button>
+            <button type="button" id="printBtn">打印</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card compare" id="compareCard">
+      <h2>三个退休时点</h2>
+      <label class="check"><input id="compareGrow" type="checkbox" checked>退休前继续按当前基数缴费</label>
+      <p class="hint" id="compareHint">填好出生年月和计发基数后，这里对比三个退休时点。</p>
+      <div class="compare-grid" id="compareGrid"></div>
+    </section>
+
+    <section class="card formula">
+      <h2><span></span>代入后的计算</h2>
+      <p id="eqBasic" class="eq">填写左侧条件后，这里显示公式。</p>
+      <p id="eqPersonal" class="eq"></p>
+      <p id="eqTrans" class="eq"></p>
+      <p id="eqTotal" class="eq"></p>
+      <p id="eqPerYear" class="eq"></p>
+      <div class="note">
+        <p>基础养老金 = 计发基数 ×（1 + 平均缴费工资指数）÷ 2 × 缴费年限 × 1%。缴费年限含视同缴费年限，不足 1 年的月数除以 12。</p>
+        <p>个人账户养老金 = 退休时个人账户储存额 ÷ 计发月数。计发月数按周岁查国发〔2005〕38 号附件，零头月数不进位。这个月数用来算每月金额，不是只发这么多个月；基本养老金发到终身。</p>
+        <p>过渡性养老金这里按「计发基数 × 视同缴费指数 × 视同缴费年限 × 过渡系数」估算。各省对年限和指数另有规定，这一项最容易和当地核定不一致。视同年限已经算进基础养老金，过渡性养老金是另外一笔。</p>
+        <p>弹性提前不超过 3 年，并且不能早于原法定退休年龄；最低缴费年限按所选退休年份。弹性延迟不超过 3 年，要和单位协商；最低缴费年限按达到法定退休年龄的那一年，不按延后的年份再提高。2030 年起，最低缴费年限从 15 年每年增加 6 个月，2039 年及以后为 20 年。</p>
+        <p>病退、特殊工种、城乡居民养老保险、机关事业单位职业年金，不在这个测算里。</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>依据：<a href="https://www.gov.cn/zhengce/zhengceku/2008-03/28/content_7376.htm">国发〔2005〕38号</a>；全国人大常委会关于实施渐进式延迟法定退休年龄的决定（2025年1月1日起施行）；<a href="https://www.gov.cn/zhengce/202501/content_6995752.htm">弹性退休实施办法解读</a>。结果是估算，实际待遇以参保地社会保险经办机构核定为准。</p>
+      <p>输入保存在这台浏览器的本地存储里，方便下次打开。「恢复示例」会用示例数据覆盖它。</p>
+    </footer>
+  </div>
+  <noscript>需要启用 JavaScript。计算仍在你的浏览器本地完成。</noscript>
+  <script src="pension.js"></script>
+  <script>
+    var STORAGE_KEY = "tuixiu-form-v1";
+    var followStatutory = true;
+    var lastSummary = "";
+    var compareSummary = "";
+
+    var form = document.getElementById("form");
+    var birthEl = document.getElementById("birth");
+    var categoryEl = document.getElementById("category");
+    var retireEl = document.getElementById("retire");
+    var retireNote = document.getElementById("retireNote");
+    var baseEl = document.getElementById("base");
+    var indexEl = document.getElementById("index");
+    var indexRangeEl = document.getElementById("indexRange");
+    var yearsEl = document.getElementById("years");
+    var partMonthsEl = document.getElementById("partMonths");
+    var deemedYearsEl = document.getElementById("deemedYears");
+    var deemedPartMonthsEl = document.getElementById("deemedPartMonths");
+    var autoYearsEl = document.getElementById("autoYears");
+    var startEl = document.getElementById("start");
+    var autoNote = document.getElementById("autoNote");
+    var deemedFollowEl = document.getElementById("deemedFollow");
+    var deemedIndexEl = document.getElementById("deemedIndex");
+    var coeffEl = document.getElementById("coeff");
+    var coeffCustomEl = document.getElementById("coeffCustom");
+    var accountEl = document.getElementById("account");
+    var wageEl = document.getElementById("wage");
+    var compareGrowEl = document.getElementById("compareGrow");
+    var messagesEl = document.getElementById("messages");
+    var moneyFmt = new Intl.NumberFormat("zh-CN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    function money(n) {
+      return moneyFmt.format(n);
+    }
+
+    function ymToInput(ym) {
+      var month = ym.month < 10 ? "0" + ym.month : String(ym.month);
+      return ym.year + "-" + month;
+    }
+
+    function inputToYm(value) {
+      var match = /^(\d{4})-(\d{2})$/.exec(value || "");
+      if (!match) return null;
+      var month = Number(match[2]);
+      if (month < 1 || month > 12) return null;
+      return { year: Number(match[1]), month: month };
+    }
+
+    function readNumber(el) {
+      if (el.value.trim() === "") return null;
+      var n = Number(el.value);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function readDuration(yearEl, monthEl) {
+      var years = yearEl.value.trim() === "" ? 0 : Number(yearEl.value);
+      var months = monthEl.value.trim() === "" ? 0 : Number(monthEl.value);
+      if (!Number.isFinite(years) || !Number.isFinite(months) || years < 0 || months < 0) return null;
+      return Math.round(years * 12 + months);
+    }
+
+    function formatRatio(ratio) {
+      var text = (ratio * 100).toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      return text + "%";
+    }
+
+    function currentPlan() {
+      var birth = inputToYm(birthEl.value);
+      if (!birth) return null;
+      return Pension.planRetirement(birth, categoryEl.value);
+    }
+
+    function applyStatutoryIfFollowing() {
+      if (!followStatutory) return;
+      var plan = currentPlan();
+      if (plan) retireEl.value = ymToInput(plan.statutory);
+    }
+
+    function updateFollowFlag() {
+      var plan = currentPlan();
+      followStatutory = !!(plan && retireEl.value === ymToInput(plan.statutory));
+    }
+
+    function syncAutoYears() {
+      var on = autoYearsEl.checked;
+      yearsEl.readOnly = on;
+      partMonthsEl.readOnly = on;
+      startEl.hidden = !on;
+      if (!on) {
+        autoNote.textContent = "";
+        return;
+      }
+      var start = inputToYm(startEl.value);
+      var retire = inputToYm(retireEl.value);
+      var deemed = readDuration(deemedYearsEl, deemedPartMonthsEl);
+      if (!start || !retire || deemed === null) {
+        autoNote.textContent = "填写实际缴费起始年月后，从起始月计到退休月的前一个月，再加上视同缴费年限。";
+        return;
+      }
+      var actual = Pension.compareYM(retire, start);
+      if (actual < 0) actual = 0;
+      var total = actual + deemed;
+      yearsEl.value = String(Math.floor(total / 12));
+      partMonthsEl.value = String(total % 12);
+      autoNote.textContent = "实际缴费 " + Pension.formatDuration(actual) + "，加视同 "
+        + Pension.formatDuration(deemed) + "，合计 " + Pension.formatDuration(total) + "。退休当月不计入。";
+    }
+
+    function syncDeemedIndex() {
+      deemedIndexEl.disabled = deemedFollowEl.checked;
+      if (deemedFollowEl.checked && indexEl.value.trim() !== "") {
+        var n = Number(indexEl.value);
+        if (Number.isFinite(n)) deemedIndexEl.value = n.toFixed(2);
+      }
+    }
+
+    function syncCoeffField() {
+      coeffCustomEl.hidden = coeffEl.value !== "custom";
+    }
+
+    function readCoeff() {
+      if (coeffEl.value === "custom") {
+        var n = readNumber(coeffCustomEl);
+        if (n === null || n <= 0) return null;
+        return n / 100;
+      }
+      return Number(coeffEl.value);
+    }
+
+    function describePlan(plan) {
+      var text = "改革后法定退休时间是" + Pension.formatYM(plan.statutory) + "，"
+        + Pension.formatAge(plan.statutoryAge);
+      if (plan.delay === 0) {
+        text += "。原法定退休年龄在 2025 年 1 月前已经达到，这次改革不提高该年龄。";
+      } else {
+        text += "，比原 " + plan.originalAge + " 周岁延迟 " + plan.delay + " 个月。";
+      }
+      text += "弹性区间从 " + Pension.formatYM(plan.earliest) + " 到 " + Pension.formatYM(plan.latest) + "。";
+      if (Pension.compareYM(plan.earliest, plan.original) > 0) {
+        text += "最早一档晚于原 " + plan.originalAge + " 周岁，因为最多只能提前 3 年。";
+      }
+      return text;
+    }
+
+    function setPressed(id, on) {
+      document.getElementById(id).setAttribute("aria-pressed", on ? "true" : "false");
+    }
+
+    function partText(value, total) {
+      var text = money(value) + " 元";
+      if (total > 0) text += " · " + (value / total * 100).toFixed(1) + "%";
+      return text;
+    }
+
+    function clearMoney() {
+      document.getElementById("amount").textContent = "—";
+      document.getElementById("annual").textContent = "";
+      document.getElementById("outBasic").textContent = "—";
+      document.getElementById("outPersonal").textContent = "—";
+      document.getElementById("outTrans").textContent = "—";
+      document.getElementById("barBasic").style.width = "0";
+      document.getElementById("barPersonal").style.width = "0";
+      document.getElementById("barTrans").style.width = "0";
+      document.getElementById("factDivisor").textContent = "—";
+      document.getElementById("factMin").textContent = "—";
+      document.getElementById("factReplace").textContent = "—";
+      document.getElementById("extra").textContent = "";
+      document.getElementById("eqBasic").textContent = "补全左侧条件后，这里显示代入后的公式。";
+      document.getElementById("eqPersonal").textContent = "";
+      document.getElementById("eqTrans").textContent = "";
+      document.getElementById("eqTotal").textContent = "";
+      document.getElementById("eqPerYear").textContent = "";
+      lastSummary = "";
+      compareSummary = "";
+      renderCompare(null);
+    }
+
+    function todayParts() {
+      var now = new Date();
+      return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
+    }
+
+    function monthFirst(ym) {
+      return { year: ym.year, month: ym.month, day: 1 };
+    }
+
+    function shortSpan(from, to) {
+      var span = Pension.calendarSpan(from, to);
+      return Pension.formatSpan(span, span.years === 0);
+    }
+
+    function addTimelineNode(nodes, ym, name, role) {
+      var key = ym.year + "-" + ym.month;
+      var found = null;
+      nodes.forEach(function (node) {
+        if (node.key === key) found = node;
+      });
+      if (found) {
+        if (found.name.indexOf(name) === -1) found.name += " · " + name;
+        if (role === "target") found.role = "target";
+        return;
+      }
+      nodes.push({ key: key, ym: ym, name: name, role: role || "" });
+    }
+
+    function fundedMonth(start, today, deemedMonths, requiredMonths) {
+      var todayYM = { year: today.year, month: today.month };
+      var paid = Pension.compareYM(todayYM, start);
+      if (paid < 0) paid = 0;
+      var credited = paid + deemedMonths;
+      if (credited >= requiredMonths) return { done: true };
+      var need = requiredMonths - credited;
+      var begin = Pension.compareYM(start, todayYM) > 0 ? start : todayYM;
+      return { done: false, month: Pension.addMonths(begin, need - 1) };
+    }
+
+    function setCountUnits(years, months, days) {
+      document.getElementById("countYears").textContent = String(years);
+      document.getElementById("countMonths").textContent = String(months);
+      document.getElementById("countDays").textContent = String(days);
+    }
+
+    function renderCountdown(birth, plan, retire) {
+      var kicker = document.getElementById("countKicker");
+      var main = document.getElementById("countMain");
+      var sub = document.getElementById("countSub");
+      var list = document.getElementById("timeline");
+      var note = document.getElementById("countNote");
+      list.replaceChildren();
+      if (!birth || !plan || !retire) {
+        kicker.textContent = "距所选退休月";
+        setCountUnits("—", "—", "—");
+        main.textContent = "填写出生年月";
+        sub.textContent = "";
+        note.textContent = "";
+        return;
+      }
+
+      var today = todayParts();
+      var todayMonth = { year: today.year, month: today.month };
+      var target = monthFirst(retire);
+      var same = today.year === retire.year && today.month === retire.month;
+      var span = Pension.calendarSpan(today, target);
+      setCountUnits(span.years, span.months, span.days);
+      main.textContent = Pension.formatSpan(span, true);
+      if (same) {
+        kicker.textContent = "所选退休月";
+        sub.textContent = "就是这个月 · " + Pension.formatYM(retire);
+      } else if (span.sign < 0) {
+        kicker.textContent = "所选退休月已过";
+        sub.textContent = Pension.formatYM(retire);
+      } else {
+        kicker.textContent = "距所选退休月";
+        sub.textContent = "共 " + span.totalDays.toLocaleString("zh-CN") + " 天 · " + Pension.formatYM(retire) + " 1 日进入该月";
+      }
+
+      var nodes = [];
+      addTimelineNode(nodes, todayMonth, "今天", "now");
+      var deemedMonths = readDuration(deemedYearsEl, deemedPartMonthsEl);
+      var start = autoYearsEl.checked ? inputToYm(startEl.value) : null;
+      if (start && deemedMonths !== null) {
+        var funded = fundedMonth(start, today, deemedMonths, Pension.minMonths(plan.statutory.year));
+        if (funded.done) addTimelineNode(nodes, todayMonth, "最低缴费年限已满", "");
+        else addTimelineNode(nodes, funded.month, "缴满最低年限", "");
+      }
+      addTimelineNode(nodes, plan.earliest, "弹性最早", "");
+      addTimelineNode(nodes, plan.statutory, "法定退休", "");
+      addTimelineNode(nodes, plan.latest, "弹性最晚", "");
+      addTimelineNode(nodes, retire, "测算退休月", "target");
+      nodes.sort(function (a, b) { return Pension.compareYM(a.ym, b.ym); });
+
+      nodes.forEach(function (node) {
+        var item = document.createElement("li");
+        var relation = Pension.compareYM(node.ym, todayMonth);
+        if (node.role === "target") item.className = "target";
+        else if (node.role === "now" || relation === 0) item.className = "now";
+        else if (relation < 0) item.className = "past";
+        var dot = document.createElement("i");
+        dot.className = "dot";
+        var name = document.createElement("span");
+        name.className = "name";
+        name.textContent = node.name;
+        var when = document.createElement("span");
+        when.className = "when";
+        if (relation === 0) when.textContent = Pension.formatYM(node.ym) + " · 这个月";
+        else if (relation < 0) when.textContent = Pension.formatYM(node.ym) + " · 已过 " + shortSpan(monthFirst(node.ym), today);
+        else when.textContent = Pension.formatYM(node.ym) + " · 还有 " + shortSpan(today, monthFirst(node.ym));
+        item.appendChild(dot);
+        item.appendChild(name);
+        item.appendChild(when);
+        list.appendChild(item);
+      });
+
+      var lines = ["倒计时算到退休月的 1 日。法定退休按月份确定。"];
+      if (Pension.compareYM(retire, plan.statutory) !== 0) {
+        var statutorySpan = Pension.calendarSpan(today, monthFirst(plan.statutory));
+        var statutoryLead = statutorySpan.sign < 0 ? "法定退休月已过 " : "距法定退休月还有 ";
+        if (today.year === plan.statutory.year && today.month === plan.statutory.month) statutoryLead = "法定退休月就是这个月";
+        else statutoryLead += Pension.formatSpan(statutorySpan, statutorySpan.years === 0);
+        lines.push(statutoryLead + "（" + Pension.formatYM(plan.statutory) + "）。");
+      }
+      if (start && deemedMonths !== null) {
+        lines.push("缴满月份按法定退休年的最低缴费年限估算，视同缴费已计入，并假设从本月起连续缴费。");
+      } else {
+        lines.push("勾选「按实际缴费起始年月计算」后，时间线上会标出缴满最低年限的月份。");
+      }
+      note.textContent = lines.join("");
+    }
+
+    function render() {
+      syncDeemedIndex();
+      syncCoeffField();
+      var birth = inputToYm(birthEl.value);
+      var retire = inputToYm(retireEl.value);
+      var plan = birth ? Pension.planRetirement(birth, categoryEl.value) : null;
+      retireNote.textContent = plan ? describePlan(plan) : "填写出生年月后，这里显示法定退休年龄和弹性区间。";
+      renderCountdown(birth, plan, retire);
+
+      var retireValue = retire ? ymToInput(retire) : "";
+      setPressed("pickStatutory", !!(plan && retireValue === ymToInput(plan.statutory)));
+      setPressed("pickEarly", !!(plan && retireValue === ymToInput(plan.earliest)));
+      setPressed("pickLate", !!(plan && retireValue === ymToInput(plan.latest)));
+
+      if (plan && retire) {
+        document.getElementById("factRetire").textContent = Pension.formatYM(retire) + "（" + Pension.formatAge(Pension.ageAt(birth, retire)) + "）";
+        document.getElementById("factStatutory").textContent = Pension.formatYM(plan.statutory) + "（" + Pension.formatAge(plan.statutoryAge) + "）";
+        document.getElementById("factWindow").textContent = Pension.formatYM(plan.earliest) + " 至 " + Pension.formatYM(plan.latest);
+      } else {
+        document.getElementById("factRetire").textContent = "—";
+        document.getElementById("factStatutory").textContent = "—";
+        document.getElementById("factWindow").textContent = "—";
+      }
+
+      var errors = [];
+      var warnings = [];
+      if (!birth) errors.push("请填写出生年月。");
+      if (!retire) errors.push("请填写退休年月。");
+      if (birth && retire && Pension.compareYM(retire, birth) <= 0) errors.push("退休时间需要晚于出生时间。");
+
+      var base = readNumber(baseEl);
+      var index = readNumber(indexEl);
+      var contributionMonths = readDuration(yearsEl, partMonthsEl);
+      var deemedMonths = readDuration(deemedYearsEl, deemedPartMonthsEl);
+      var account = readNumber(accountEl);
+      var wage = readNumber(wageEl);
+      var coefficient = readCoeff();
+      var deemedIndex = deemedFollowEl.checked ? index : readNumber(deemedIndexEl);
+
+      if (base === null) errors.push("请填写退休上年度月计发基数。");
+      else if (base <= 0) errors.push("计发基数需要大于 0。");
+      if (index === null || index <= 0) errors.push("平均缴费工资指数需要大于 0。");
+      else if (index < 0.6 || index > 3) warnings.push("平均缴费工资指数通常在 0.60 到 3.00 之间，现仍按填写的数计算。");
+      if (contributionMonths === null || deemedMonths === null) errors.push("缴费年限和视同缴费年限需要是不小于 0 的数字。");
+      else if (deemedMonths > contributionMonths) errors.push("视同缴费年限不能大于累计缴费年限。累计年限要包含视同年限。");
+      if (deemedMonths > 0 && (deemedIndex === null || deemedIndex <= 0)) errors.push("请填写大于 0 的视同缴费指数。");
+      if (coefficient === null) errors.push("自定义过渡系数请填写百分数，1.2 表示 1.2%。");
+      if (account === null) errors.push("请填写退休时个人账户储存额。还没有账户就填 0。");
+      else if (account < 0) errors.push("个人账户储存额不能为负数。");
+      if (wage !== null && wage < 0) errors.push("退休前月工资不能为负数。");
+      if (autoYearsEl.checked && inputToYm(startEl.value) && retire && Pension.compareYM(retire, inputToYm(startEl.value)) < 0) {
+        warnings.push("实际缴费起始年月晚于退休年月，实际缴费已按 0 个月计算。");
+      }
+
+      messagesEl.replaceChildren();
+      errors.forEach(function (text) {
+        var p = document.createElement("p");
+        p.textContent = text;
+        messagesEl.appendChild(p);
+      });
+      warnings.forEach(function (text) {
+        var p = document.createElement("p");
+        p.className = "warn";
+        p.textContent = text;
+        messagesEl.appendChild(p);
+      });
+
+      var statusEl = document.getElementById("status");
+      if (errors.length || !plan || !retire || !birth) {
+        statusEl.className = "status stop";
+        statusEl.textContent = "还不能计算";
+        document.getElementById("amountLabel").textContent = "月基本养老金";
+        clearMoney();
+        save();
+        return;
+      }
+
+      var result = Pension.calculate({
+        birth: birth,
+        category: categoryEl.value,
+        retire: retire,
+        base: base,
+        index: index,
+        contributionMonths: contributionMonths,
+        deemedMonths: deemedMonths,
+        deemedIndex: deemedIndex || 0,
+        coefficient: coefficient,
+        account: account
+      });
+
+      var outside = result.window !== "inside";
+      if (!result.yearsMet) {
+        statusEl.className = "status stop";
+        statusEl.textContent = "缴费年限不足，还不能按月领取";
+        document.getElementById("amountLabel").textContent = "缴满年限后的月养老金估算";
+      } else if (outside) {
+        statusEl.className = "status warn";
+        statusEl.textContent = "退休时间不在弹性区间";
+        document.getElementById("amountLabel").textContent = "按所选时间估算的月养老金";
+      } else {
+        statusEl.className = "status ok";
+        statusEl.textContent = "年限和退休时间都在可领取范围内";
+        document.getElementById("amountLabel").textContent = "月基本养老金";
+      }
+
+      document.getElementById("amount").textContent = money(result.total);
+      document.getElementById("annual").textContent = "全年 " + money(result.annual) + " 元";
+      document.getElementById("outBasic").textContent = partText(result.basic, result.total);
+      document.getElementById("outPersonal").textContent = partText(result.personal, result.total);
+      document.getElementById("outTrans").textContent = partText(result.transitional, result.total);
+
+      var widthBase = result.total > 0 ? (result.basic / result.total * 100) + "%" : "0";
+      var widthPersonal = result.total > 0 ? (result.personal / result.total * 100) + "%" : "0";
+      var widthTrans = result.total > 0 ? (result.transitional / result.total * 100) + "%" : "0";
+      document.getElementById("barBasic").style.width = widthBase;
+      document.getElementById("barPersonal").style.width = widthPersonal;
+      document.getElementById("barTrans").style.width = widthTrans;
+
+      var divisorText = result.divisor + "（" + result.divisorAge + "周岁）";
+      if (result.age.months > 0 && !result.divisorClamp) divisorText += "，" + result.age.months + "个月不进位";
+      if (result.divisorClamp === "low") divisorText += "。低于 40 周岁，表上没有更小的年龄";
+      if (result.divisorClamp === "high") divisorText += "。高于 70 周岁，表上没有更大的年龄";
+      document.getElementById("factDivisor").textContent = divisorText;
+
+      var minText = Pension.formatDuration(result.requiredMonths) + " · 已缴 "
+        + Pension.formatDuration(result.contributionMonths);
+      if (!result.yearsMet) minText += "，还差 " + Pension.formatDuration(result.requiredMonths - result.contributionMonths);
+      document.getElementById("factMin").textContent = minText;
+
+      if (wage && wage > 0) {
+        document.getElementById("factReplace").textContent = (result.total / wage * 100).toFixed(1) + "%，相对月工资 " + money(wage) + " 元";
+      } else {
+        document.getElementById("factReplace").textContent = "未填退休前月工资";
+      }
+
+      var extra = "";
+      if (result.window === "before-original") {
+        extra = "所选时间早于原法定退休年龄 " + Pension.formatYM(plan.original) + "。";
+      } else if (result.window === "before-window") {
+        extra = "所选时间早于弹性提前下限 " + Pension.formatYM(plan.earliest) + "。提前最多 3 年，并且不能低于原法定退休年龄。";
+      } else if (result.window === "after-window") {
+        extra = "所选时间晚于弹性延迟上限 " + Pension.formatYM(plan.latest) + "。延迟最多 3 年，并且要和单位协商。最低缴费年限仍按达到法定退休年龄的 " + result.requiredYear + " 年计算。";
+      } else if (Pension.compareYM(retire, plan.statutory) > 0) {
+        extra = "这是弹性延迟。最低缴费年限按达到法定退休年龄的 " + result.requiredYear + " 年计算。";
+      } else if (Pension.compareYM(retire, plan.statutory) < 0) {
+        extra = "这是弹性提前。最低缴费年限按所选退休年份 " + result.requiredYear + " 年计算。";
+      }
+      if (!result.yearsMet) {
+        extra += "个人账户储存额 " + money(account) + " 元可以按规定一次性支付给本人，并终止基本养老保险关系。也可以延长缴费或一次性缴费，缴满最低年限后再按月领取。上面的月养老金是缴满之后的估算。";
+      }
+      document.getElementById("extra").textContent = extra;
+
+      var yearsLabel = Pension.formatDuration(contributionMonths);
+      document.getElementById("eqBasic").textContent = "基础养老金 = " + money(base) + " × (1 + " + index.toFixed(2)
+        + ") ÷ 2 × " + yearsLabel + " × 1% = " + money(result.basic) + " 元";
+      document.getElementById("eqPersonal").textContent = "个人账户养老金 = " + money(account) + " ÷ " + result.divisor
+        + " = " + money(result.personal) + " 元";
+      if (deemedMonths === 0) {
+        document.getElementById("eqTrans").textContent = "过渡性养老金 = 0 元。没有填写视同缴费年限。";
+      } else {
+        document.getElementById("eqTrans").textContent = "过渡性养老金 = " + money(base) + " × " + deemedIndex.toFixed(2)
+          + " × " + Pension.formatDuration(deemedMonths) + " × " + formatRatio(coefficient)
+          + " = " + money(result.transitional) + " 元。视同年限已经计入缴费年限，这一项是另加的。";
+      }
+      document.getElementById("eqTotal").textContent = "合计 = " + money(result.basic) + " + " + money(result.personal)
+        + " + " + money(result.transitional) + " = " + money(result.total) + " 元/月，全年 " + money(result.annual) + " 元。";
+      document.getElementById("eqPerYear").textContent = "按现在的计发基数和指数，缴费年限每多 1 年，基础养老金每月增加 "
+        + money(result.basicPerYear) + " 元。勾选「退休前继续按当前基数缴费」后，三个时点会把差额月份记入个人账户，不计利息。";
+
+      compareSummary = renderCompare({
+        birth: birth,
+        plan: plan,
+        retire: retire,
+        base: base,
+        index: index,
+        contributionMonths: contributionMonths,
+        deemedMonths: deemedMonths,
+        deemedIndex: deemedIndex || 0,
+        coefficient: coefficient,
+        account: account
+      });
+
+      var categoryLabel = categoryEl.options[categoryEl.selectedIndex].text;
+      lastSummary = [
+        "职工基本养老金测算",
+        "出生：" + Pension.formatYM(birth),
+        "人员：" + categoryLabel,
+        "退休：" + document.getElementById("factRetire").textContent,
+        "法定退休：" + document.getElementById("factStatutory").textContent,
+        "计发基数：" + money(base) + " 元",
+        "平均缴费工资指数：" + index.toFixed(2),
+        "缴费年限：" + Pension.formatDuration(contributionMonths),
+        "视同缴费年限：" + Pension.formatDuration(deemedMonths),
+        "过渡系数：" + formatRatio(coefficient),
+        "个人账户储存额：" + money(account) + " 元",
+        "月基本养老金：" + money(result.total) + " 元",
+        "基础养老金：" + money(result.basic) + " 元",
+        "个人账户养老金：" + money(result.personal) + " 元",
+        "过渡性养老金：" + money(result.transitional) + " 元",
+        "全年：" + money(result.annual) + " 元",
+        document.getElementById("countKicker").textContent + "：" + document.getElementById("countMain").textContent,
+        compareSummary,
+        statusEl.textContent,
+        "估算值，以参保地经办机构核定为准。"
+      ].join("\n");
+
+      save();
+    }
+
+    function collectState() {
+      return {
+        birth: birthEl.value,
+        category: categoryEl.value,
+        retire: retireEl.value,
+        followStatutory: followStatutory,
+        base: baseEl.value,
+        index: indexEl.value,
+        years: yearsEl.value,
+        partMonths: partMonthsEl.value,
+        deemedYears: deemedYearsEl.value,
+        deemedPartMonths: deemedPartMonthsEl.value,
+        autoYears: autoYearsEl.checked,
+        start: startEl.value,
+        deemedFollow: deemedFollowEl.checked,
+        deemedIndex: deemedIndexEl.value,
+        coeff: coeffEl.value,
+        coeffCustom: coeffCustomEl.value,
+        account: accountEl.value,
+        wage: wageEl.value,
+        compareGrow: compareGrowEl.checked
+      };
+    }
+
+    function save() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(collectState())); } catch (err) {}
+    }
+
+    function applyDemo() {
+      followStatutory = true;
+      birthEl.value = "1980-06";
+      categoryEl.value = "male";
+      baseEl.value = "9000";
+      indexEl.value = "1.00";
+      indexRangeEl.value = "1";
+      yearsEl.value = "30";
+      partMonthsEl.value = "0";
+      deemedYearsEl.value = "0";
+      deemedPartMonthsEl.value = "0";
+      autoYearsEl.checked = false;
+      startEl.value = "";
+      deemedFollowEl.checked = true;
+      deemedIndexEl.value = "1.00";
+      coeffEl.value = "0.012";
+      coeffCustomEl.value = "";
+      accountEl.value = "180000";
+      wageEl.value = "";
+      compareGrowEl.checked = true;
+      applyStatutoryIfFollowing();
+      syncAutoYears();
+    }
+
+    function restore() {
+      var raw = null;
+      try { raw = localStorage.getItem(STORAGE_KEY); } catch (err) { return false; }
+      if (!raw) return false;
+      var data = null;
+      try { data = JSON.parse(raw); } catch (err) { return false; }
+      if (!data || typeof data !== "object") return false;
+      followStatutory = !!data.followStatutory;
+      if (data.birth) birthEl.value = data.birth;
+      if (data.category) categoryEl.value = data.category;
+      if (data.retire) retireEl.value = data.retire;
+      if (data.base !== undefined) baseEl.value = data.base;
+      if (data.index !== undefined) indexEl.value = data.index;
+      if (data.years !== undefined) yearsEl.value = data.years;
+      if (data.partMonths !== undefined) partMonthsEl.value = data.partMonths;
+      if (data.deemedYears !== undefined) deemedYearsEl.value = data.deemedYears;
+      if (data.deemedPartMonths !== undefined) deemedPartMonthsEl.value = data.deemedPartMonths;
+      autoYearsEl.checked = !!data.autoYears;
+      if (data.start) startEl.value = data.start;
+      deemedFollowEl.checked = data.deemedFollow !== false;
+      if (data.deemedIndex !== undefined) deemedIndexEl.value = data.deemedIndex;
+      if (data.coeff) coeffEl.value = data.coeff;
+      if (data.coeffCustom !== undefined) coeffCustomEl.value = data.coeffCustom;
+      if (data.account !== undefined) accountEl.value = data.account;
+      if (data.wage !== undefined) wageEl.value = data.wage;
+      compareGrowEl.checked = data.compareGrow !== false;
+      var indexNum = Number(indexEl.value);
+      if (Number.isFinite(indexNum)) indexRangeEl.value = String(indexNum);
+      applyStatutoryIfFollowing();
+      syncAutoYears();
+      return true;
+    }
+
+    function renderCompare(ctx) {
+      var grid = document.getElementById("compareGrid");
+      var hint = document.getElementById("compareHint");
+      grid.replaceChildren();
+      if (!ctx) {
+        hint.textContent = "填好出生年月和计发基数后，这里对比三个退休时点。";
+        return "";
+      }
+      var grow = compareGrowEl.checked;
+      var credit = Pension.round2(ctx.base * ctx.index * 0.08);
+      hint.textContent = grow
+        ? "以所选退休月填写的年限和储存额为基准。每差 1 个月，缴费年限增减 1 个月，个人账户增减 " + money(credit) + " 元（计发基数 × 指数 × 8%），不计利息。三个时点用同一个计发基数。"
+        : "三个时点使用同一缴费年限和储存额。金额差别只来自退休年龄对应的计发月数。";
+      var slots = [
+        { key: "early", label: "弹性最早", ym: ctx.plan.earliest },
+        { key: "statutory", label: "法定退休", ym: ctx.plan.statutory },
+        { key: "late", label: "弹性最晚", ym: ctx.plan.latest }
+      ];
+      var built = slots.map(function (slot) {
+        var projected = Pension.projectRetirement({
+          selected: ctx.retire,
+          target: slot.ym,
+          contributionMonths: ctx.contributionMonths,
+          deemedMonths: ctx.deemedMonths,
+          account: ctx.account,
+          base: ctx.base,
+          index: ctx.index,
+          grow: grow
+        });
+        var result = Pension.calculate({
+          birth: ctx.birth,
+          category: categoryEl.value,
+          retire: slot.ym,
+          base: ctx.base,
+          index: ctx.index,
+          contributionMonths: projected.contributionMonths,
+          deemedMonths: ctx.deemedMonths,
+          deemedIndex: ctx.deemedIndex,
+          coefficient: ctx.coefficient,
+          account: projected.account
+        });
+        return { slot: slot, projected: projected, result: result };
+      });
+      var statutoryTotal = built[1].result.total;
+      var lines = ["三个时点" + (grow ? "（继续按当前基数缴费）" : "（年限和储存额不变）") + "："];
+      built.forEach(function (item) {
+        grid.appendChild(buildCompareCard(item, statutoryTotal, ctx.retire));
+        lines.push(item.slot.label + " " + Pension.formatYM(item.slot.ym) + "：" + money(item.result.total) + " 元/月");
+      });
+      return lines.join("\n");
+    }
+
+    function buildCompareCard(item, statutoryTotal, selected) {
+      var card = document.createElement("article");
+      card.className = "compare-card";
+      var same = Pension.compareYM(item.slot.ym, selected) === 0;
+      if (same) card.classList.add("current");
+
+      var label = document.createElement("p");
+      label.className = "label";
+      label.textContent = same ? item.slot.label + " · 当前测算" : item.slot.label;
+
+      var when = document.createElement("p");
+      when.className = "when";
+      when.textContent = Pension.formatYM(item.slot.ym) + " · " + Pension.formatAge(item.result.age);
+
+      var figure = document.createElement("p");
+      figure.className = "figure";
+      figure.textContent = money(item.result.total);
+
+      var unit = document.createElement("p");
+      unit.className = "unit";
+      unit.textContent = "元/月";
+
+      var delta = document.createElement("p");
+      delta.className = "delta";
+      if (item.slot.key === "statutory") {
+        delta.textContent = "对比基准";
+      } else {
+        var rounded = Math.round((item.result.total - statutoryTotal) * 100) / 100;
+        delta.textContent = "比法定每月 " + (rounded > 0 ? "+" : "") + money(rounded) + " 元";
+      }
+
+      var dl = document.createElement("dl");
+      function row(name, value) {
+        var wrap = document.createElement("div");
+        var dt = document.createElement("dt");
+        dt.textContent = name;
+        var dd = document.createElement("dd");
+        dd.textContent = value;
+        wrap.appendChild(dt);
+        wrap.appendChild(dd);
+        dl.appendChild(wrap);
+      }
+      row("基础", money(item.result.basic) + " 元");
+      row("个人账户", money(item.result.personal) + " 元");
+      row("过渡", money(item.result.transitional) + " 元");
+      row("缴费年限", Pension.formatDuration(item.projected.contributionMonths));
+      row("储存额", money(item.projected.account) + " 元");
+      row("计发月数", String(item.result.divisor));
+
+      var note = document.createElement("p");
+      note.className = "hint";
+      if (!item.result.yearsMet) note.textContent = "缴费年限不足，这一档还不能按月领取。";
+      else if (item.projected.clamped) note.textContent = "再往前推，实际缴费已经减到 0，只保留视同缴费。";
+      else note.textContent = "";
+
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "no-print";
+      button.textContent = same ? "当前测算" : "按此测算";
+      button.disabled = same;
+      button.addEventListener("click", function () { adopt(item.slot.key); });
+
+      card.append(label, when, figure, unit, delta, dl, note, button);
+      return card;
+    }
+
+    function adopt(which) {
+      var plan = currentPlan();
+      if (!plan) return;
+      var ym = which === "early" ? plan.earliest : which === "late" ? plan.latest : plan.statutory;
+      if (compareGrowEl.checked) {
+        var retire = inputToYm(retireEl.value);
+        var contributionMonths = readDuration(yearsEl, partMonthsEl);
+        var deemedMonths = readDuration(deemedYearsEl, deemedPartMonthsEl);
+        var account = readNumber(accountEl);
+        var base = readNumber(baseEl);
+        var index = readNumber(indexEl);
+        if (retire && contributionMonths !== null && deemedMonths !== null && account !== null && base !== null && index !== null) {
+          var projected = Pension.projectRetirement({
+            selected: retire,
+            target: ym,
+            contributionMonths: contributionMonths,
+            deemedMonths: deemedMonths,
+            account: account,
+            base: base,
+            index: index,
+            grow: true
+          });
+          if (!autoYearsEl.checked) {
+            yearsEl.value = String(Math.floor(projected.contributionMonths / 12));
+            partMonthsEl.value = String(projected.contributionMonths % 12);
+          }
+          accountEl.value = projected.account.toFixed(2);
+        }
+      }
+      retireEl.value = ymToInput(ym);
+      followStatutory = which === "statutory";
+      syncAutoYears();
+      render();
+    }
+
+    function pick(which) {
+      var plan = currentPlan();
+      if (!plan) return;
+      var ym = which === "early" ? plan.earliest : which === "late" ? plan.latest : plan.statutory;
+      retireEl.value = ymToInput(ym);
+      followStatutory = which === "statutory";
+      syncAutoYears();
+      render();
+    }
+
+    form.addEventListener("submit", function (event) { event.preventDefault(); });
+    form.addEventListener("input", onFormEvent);
+    form.addEventListener("change", onFormEvent);
+
+    function onFormEvent(event) {
+      var id = event.target.id;
+      if (id === "birth" || id === "category") applyStatutoryIfFollowing();
+      if (id === "retire") updateFollowFlag();
+      if (id === "indexRange") indexEl.value = Number(indexRangeEl.value).toFixed(2);
+      if (id === "index") {
+        var n = Number(indexEl.value);
+        if (Number.isFinite(n)) indexRangeEl.value = String(n);
+      }
+      if (id === "birth" || id === "category" || id === "retire" || id === "start"
+        || id === "autoYears" || id === "deemedYears" || id === "deemedPartMonths") {
+        syncAutoYears();
+      }
+      render();
+    }
+
+    document.getElementById("pickStatutory").addEventListener("click", function () { pick("statutory"); });
+    document.getElementById("pickEarly").addEventListener("click", function () { pick("early"); });
+    document.getElementById("pickLate").addEventListener("click", function () { pick("late"); });
+    compareGrowEl.addEventListener("change", function () { render(); });
+    document.getElementById("exampleBtn").addEventListener("click", function () {
+      applyDemo();
+      render();
+    });
+    document.getElementById("printBtn").addEventListener("click", function () { window.print(); });
+    document.getElementById("copyBtn").addEventListener("click", function () {
+      if (!lastSummary) return;
+      var button = document.getElementById("copyBtn");
+      function done() {
+        button.textContent = "已复制";
+        setTimeout(function () { button.textContent = "复制结果"; }, 1500);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(lastSummary).then(done).catch(function () {});
+      }
+    });
+    document.getElementById("fillAccount").addEventListener("click", function () {
+      var monthly = readNumber(document.getElementById("estBase"));
+      var years = readNumber(document.getElementById("estYears"));
+      var rate = readNumber(document.getElementById("estRate"));
+      var out = document.getElementById("estResult");
+      if (monthly === null || years === null || rate === null || monthly < 0 || years < 0 || rate < 0) {
+        out.textContent = "请把月缴费基数、缴费年数和记账利率填完整。";
+        return;
+      }
+      var value = Pension.estimateAccount(monthly, years, rate / 100);
+      accountEl.value = value.toFixed(2);
+      out.textContent = "粗算储存额 " + money(value) + " 元。这不是社保官方余额。";
+      render();
+    });
+    document.querySelector("details").addEventListener("toggle", function (event) {
+      if (!event.target.open) return;
+      var estYears = document.getElementById("estYears");
+      if (estYears.value.trim() !== "") return;
+      var total = readDuration(yearsEl, partMonthsEl);
+      var deemed = readDuration(deemedYearsEl, deemedPartMonthsEl);
+      if (total === null || deemed === null) return;
+      estYears.value = (Math.max(0, total - deemed) / 12).toFixed(2);
+    });
+
+    if (!restore()) applyDemo();
+    syncAutoYears();
+    render();
+  </script>
+</body>
+</html>
